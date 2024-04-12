@@ -5,11 +5,17 @@ import NotoSans_20 as font_20
 import NotoSans_25 as font_25
 import NotoSans_32 as font_32
 from machine import Pin, Timer, ADC
-
+# added
+import asyncio
+import aioespnow
+# end of add
 
 TRIGGER_PIN = 15
 TRIGGER_CONNECTED_PIN = 16
 
+# Initialize ESP-NOW
+esp = aioespnow.AIOESPNow()  # Returns AIOESPNow enhanced with async support
+esp.active(True)
 
 class RoverWindow:
     def __init__(self, window_manager, display):
@@ -218,11 +224,14 @@ class RoverMissionWindow:
         self.window_manager.enable_screensaver()
         self.update_timer.deinit()
         self.running_mission = False
+        self.task.cancel()   # <----add----<<<<
 
     def clicked_run_mission(self, mission_name):
         print('Run Mission: {}'.format(mission_name))
         self.window_manager.disable_screensaver()
-        self.mission = RoverMission()
+        self.mission = RoverMission()                                  # <-----------------------<<<<
+        self.task = asyncio.create_task(wait_for_message(self.mission))  # <---add---<<<<
+        print('wait_for_message created')
         self.window_manager.push_window(self.build_rover_mission_run_window(mission_name))
         self.trigger_pin = Pin(TRIGGER_PIN, Pin.IN, Pin.PULL_UP)
         self.trigger_connected_pin = Pin(TRIGGER_CONNECTED_PIN, Pin.IN, Pin.PULL_UP)
@@ -233,6 +242,28 @@ class RoverMissionWindow:
         print('Edit Mission: {}'.format(mission_name))
         RoverEditMissionWindow(self.window_manager, self.display)
 
+
+# added
+async def wait_for_message(mission):
+    while True:
+        _, msg = esp.recv()
+        if msg:             # msg == None if timeout in recv()
+            if msg.startswith(b'robot_battery_value:'):     # elif
+                string_data = msg.decode('utf-8')
+                voltage_value = string_data.split(":")[1]
+                print(f"robot_battery_value: {voltage_value}")
+                mission.robot_voltage = float(voltage_value)
+
+            elif msg.startswith (b'gps_sat_cnt_value:'):
+                string_data = msg.decode('utf-8')
+                gps_sat_cnt_value = string_data.split(":")[1]
+                print(f"gps_sat_cnt_value: {gps_sat_cnt_value}")
+                mission.gps_satellite_count = float(gps_sat_cnt_value)
+            else:
+                print(f"Unknown message {msg}")
+        await asyncio.sleep_ms(1)
+# end of add        
+                
 
 class RoverEditMissionWindow:
     def __init__(self, window_manager, display):

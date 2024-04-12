@@ -8,6 +8,16 @@ from ttrobot_window import TTRobotWindow
 from admin_window import AdminWindow
 import time
 
+# added 
+import network                         
+import machine
+import asyncio
+# end of add
+
+# A WLAN interface must be active to send()/recv()
+sta = network.WLAN(network.STA_IF)  # Or network.AP_IF
+sta.active(True)
+sta.disconnect()      # For ESP8266
 
 class Failsafe:
     def __init__(self):
@@ -52,8 +62,13 @@ theme.apply()
 
 failsafe = Failsafe()
 
-try:
+async def loop_forever():
     while True:
-        time.sleep_ms(1000)
+        await asyncio.sleep(1)   # <---add----<<<<
+
+try:
+    asyncio.run(loop_forever()) # <---add----<<<< 
+    #while True:                # <---remove----<<<<
+    #    time.sleep_ms(1000)    # <---remove----<<<<
 except KeyboardInterrupt:
     failsafe.shutdown()
