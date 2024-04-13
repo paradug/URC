@@ -258,7 +258,7 @@ async def wait_for_message(mission):
                 string_data = msg.decode('utf-8')
                 gps_sat_cnt_value = string_data.split(":")[1]
                 print(f"gps_sat_cnt_value: {gps_sat_cnt_value}")
-                mission.gps_satellite_count = float(gps_sat_cnt_value)
+                mission.gps_satellite_count = int(gps_sat_cnt_value)
             else:
                 print(f"Unknown message {msg}")
         await asyncio.sleep_ms(1)
